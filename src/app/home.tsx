@@ -3,12 +3,16 @@ import React from "react";
 import { Spotlight } from "@/components/ui/spotlight-new";
 import { LampContainer } from "@/components/ui/lamp";
 import { motion } from "motion/react";
+import { Ticker } from "@/components/ui/tickers";
 
 export function HomePage() {
   return (
 <div className="flex flex-col w-full">
   {/* First section - Spotlight */}
-  <section className="h-screen w-full rounded-md flex flex-col items-center justify-center bg-black/[0.96] antialiased bg-grid-white/[0.02] relative overflow-hidden">
+  <section className="h-screen w-full rounded-none flex flex-col items-center justify-center bg-black/[0.96] antialiased bg-grid-white/[0.02] relative overflow-hidden">
+          <div className="absolute top-24 left-0 right-0 z-10 w-full">
+          <Ticker />
+        </div>
     <div className="absolute inset-0 scale-75 origin-center">
       <Spotlight />
     </div>
@@ -45,7 +49,7 @@ export function HomePage() {
           duration: 1.5,
           ease: "easeInOut",
         }}
-        className="absolute top-55 mt-8 bg-gradient-to-b from-cyan-200 to-blue-700 py-4 bg-clip-text text-center text-4xl font-medium tracking-tight text-transparent md:text-7xl"
+        className="absolute top-55 mt-8 bg-gradient-to-b from-cyan-50 to-blue-900 py-4 bg-clip-text text-center text-4xl font-medium tracking-tight text-transparent md:text-7xl"
       >
         DATA. <br/> <br/> NEWS. <br/> <br/> SENTIMENT.
       </motion.h1>

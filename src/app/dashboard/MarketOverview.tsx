@@ -14,7 +14,11 @@ import {
   Legend,
   Filler,
 } from "chart.js";
-import { FiSearch } from "react-icons/fi"; // Import search icon from react-icons
+import { FiSearch } from "react-icons/fi"; 
+import { CrosshairPlugin } from "chartjs-plugin-crosshair";
+import { hover } from "motion/react";
+
+ChartJS.register(CrosshairPlugin);
 
 // Register Chart.js components
 ChartJS.register(CategoryScale, LinearScale, PointElement, LineElement, Title, Tooltip, Legend, Filler);
@@ -22,26 +26,64 @@ ChartJS.register(CategoryScale, LinearScale, PointElement, LineElement, Title, T
 export default function MarketOverview() {
   const [stockData, setStockData] = useState<any>(null);
   const [loading, setLoading] = useState(true);
-  const [symbol, setSymbol] = useState("IBM"); // Default stock symbol
-  const [inputSymbol, setInputSymbol] = useState("IBM"); // Input field value
-  const chartRef = useRef(null); // Reference for the chart to create gradient
+  const [symbol, setSymbol] = useState("IBM"); 
+  const [inputSymbol, setInputSymbol] = useState("IBM"); 
+  const chartRef = useRef(null); 
+  const [logoUrl, setLogoUrl] = useState<string | null>(null); 
+
 
   useEffect(() => {
     fetchStockData(symbol);
+    fetchStockLogo(symbol); 
   }, [symbol]);
 
-  async function fetchStockData(stockSymbol: string) {
-    setLoading(true);
+async function fetchStockData(stockSymbol: string) {
+  setLoading(true);
+  try {
+    const response = await fetch(`http://localhost:5000/api/stocks/${stockSymbol}`);
+    const data = await response.json();
+
+    const closePrices = data
+      .map((item: any) => {
+        if (item && item.close !== undefined) {
+          return item.close; 
+        } else {
+          console.warn("Malformed data item:", item); 
+          return null; 
+        }
+      })
+      .filter((price: number | null) => price !== null); 
+
+    const timestamps = data
+      .map((item: any) => {
+        if (item && item.timestamp !== undefined) {
+          return new Date(item.timestamp * 1000).toLocaleDateString(); 
+        } else {
+          console.warn("Malformed data item:", item); 
+          return null; 
+        }
+      })
+      .filter((timestamp: string | null) => timestamp !== null); 
+
+    setStockData({ closePrices, timestamps });
+    setLoading(false);
+  } catch (error) {
+    console.error("Error fetching stock data:", error);
+    setLoading(false);
+  }
+}
+
+  async function fetchStockLogo(stockSymbol: string) {
     try {
-      const response = await fetch(`http://localhost:5000/api/stocks/${stockSymbol}`);
+      const response = await fetch(`http://localhost:5000/api/logo/${stockSymbol}`); 
       const data = await response.json();
-      setStockData(data);
-      setLoading(false);
+      setLogoUrl(data.logoUrl); 
     } catch (error) {
-      console.error("Error fetching stock data:", error);
-      setLoading(false);
+      console.error("Error fetching stock logo:", error);
+      setLogoUrl(null); 
     }
   }
+
 
   // Handle search submission
   const handleSearch = () => {
@@ -63,31 +105,16 @@ export default function MarketOverview() {
     setInputSymbol(stockSymbol); // Update the input field to reflect the selected stock
   };
 
-  // Calculate net gain or loss
-  const stockName = symbol.toUpperCase(); // Display the stock symbol as the name
-  const timeSeries = stockData?.["Time Series (Daily)"];
-  const dates = timeSeries ? Object.keys(timeSeries).slice(0, 10).reverse() : [];
-  const closingPrices = timeSeries
-    ? dates.map((date) => parseFloat(timeSeries[date]["4. close"]))
-    : [];
-  const netChange =
-    closingPrices.length > 1
-      ? closingPrices[closingPrices.length - 1] - closingPrices[0]
-      : 0;
-  const netChangePercentage =
-    closingPrices.length > 1
-      ? ((netChange / closingPrices[0]) * 100).toFixed(2)
-      : "0.00";
-
   // Prepare data for the chart
-  const chartData = stockData?.["Time Series (Daily)"]
+  const chartData = stockData
     ? {
-        labels: dates, // Last 10 days
+        labels: stockData.timestamps, // Use timestamps as labels
         datasets: [
           {
             label: "Closing Price",
-            data: closingPrices,
+            data: stockData.closePrices, // Use close prices for the chart
             borderColor: "rgb(0, 162, 255)", // Line color
+            borderWidth: 3, // Line width
             backgroundColor: (context: any) => {
               const chart = context.chart;
               const { ctx, chartArea } = chart;
@@ -105,43 +132,92 @@ export default function MarketOverview() {
             fill: true, // Enable gradient fill
             tension: 0.4, // Smooth curve
             pointRadius: 0, // Remove dots
+            hoverRadius: 5, // Increase hover radius
           },
         ],
       }
     : null;
-
-  // Chart options
-  const chartOptions = {
-    responsive: true,
-    maintainAspectRatio: false, // Allow the chart to resize dynamically
-    plugins: {
-      legend: {
-        display: false, // Remove legend
-      },
-      tooltip: {
-        callbacks: {
-          label: (context: any) => `$${context.raw}`, // Add dollar sign to tooltip
+let curr_month: string | null;
+const chartOptions = {
+  responsive: true,
+  maintainAspectRatio: false, // Allow the chart to resize dynamically
+    interaction: {
+    mode: "nearest", // Snap to the nearest data point
+    axis: "x", // Interaction is limited to the x-axis
+    intersect: false, // Allow hovering even if not directly over a data point
+  },
+  plugins: {
+    legend: {
+      display: false, // Remove legend
+    },
+    tooltip: {
+      callbacks: {
+        // Customize tooltip to show date and price
+        title: (tooltipItems: any) => {
+          const index = tooltipItems[0]?.dataIndex; // Safely access dataIndex
+          if (stockData && stockData.timestamps && index !== undefined) {
+            return stockData.timestamps[index]; // Show the date
+          }
+          return ""; // Fallback if data is missing
+        },
+        label: (tooltipItem: any) => {
+          if (tooltipItem.raw !== undefined) {
+            return `$${tooltipItem.raw.toFixed(2)}`; // Show the price
+          }
+          return ""; // Fallback if raw data is missing
         },
       },
     },
-    scales: {
-      x: {
-        display: false, // Remove x-axis labels
-        grid: {
-          display: false, // Remove grid lines on x-axis
-        },
+    crosshair: {
+      line: {
+        color: "rgba(255, 255, 255, 0)", // Crosshair line color
+        width: 0, // Crosshair line width
       },
-      y: {
-        ticks: {
-          callback: (value: number) => `$${value}`, // Add dollar sign to y-axis
-          color: "rgba(255, 255, 255, 0.7)", // Y-axis label color
-        },
-        grid: {
-          display: false, // Remove grid lines on y-axis
-        },
+      sync: {
+        enabled: false, // Disable syncing with other charts
+      },
+      zoom: {
+        enabled: false, // Disable zooming
+      },
+      snap: {
+        enabled: true, // Snap to data points
       },
     },
-  };
+  },
+  scales: {
+    x: {
+      display: true, // Show x-axis labels
+      grid: {
+        display: false, // Remove grid lines on x-axis
+      },
+      ticks: {
+        callback: (value: number, index: number) => {
+          if (stockData && stockData.timestamps) {
+            const date = new Date(stockData.timestamps[index]);
+            if (date.toDateString().split(" ")[1] !== curr_month) {
+              curr_month = date.toDateString().split(" ")[1];
+              return curr_month.toUpperCase();
+            }
+            else{
+              return date.toDateString().split(" ")[2]; // Show day of the month
+            }
+          }
+          return ""; // No label for other days
+        },
+        color: "rgba(255, 255, 255, 0.7)", // X-axis label color
+      },
+    },
+    y: {
+      ticks: {
+        callback: (value: number) => `$${value}`, // Add dollar sign to y-axis
+        color: "rgba(255, 255, 255, 0.7)", // Y-axis label color
+      },
+      grid: {
+        display: false, // Remove grid lines on y-axis
+      },
+    },
+  },
+};
 
   return (
     <div className="relative rounded-xl">
@@ -166,7 +242,7 @@ export default function MarketOverview() {
           </div>
 
           {/* Search Bar */}
-          <div className="mb-4 flex items-center absolute top-14 left-4 space-x-2">
+          <div className="mb-8 flex items-center absolute top-14 left-4 space-x-2">
             <input
               type="text"
               placeholder="Enter a symbol (e.g., AAPL)"
@@ -184,20 +260,26 @@ export default function MarketOverview() {
           </div>
 
           {/* Stock Name and Net Change */}
-          <div className="absolute top-20 right-4 text-white text-right">
-            <h3 className="text-lg font-semibold">{stockName}</h3>
-            <p
-              className={`text-sm ${
-                netChange >= 0 ? "text-green-400" : "text-red-400"
-              }`}
-            >
-              {netChange >= 0 ? "+" : ""}
-              {netChange.toFixed(2)} ({netChangePercentage}%)
-            </p>
+          <div className="absolute top-13 right-4 text-white text-right">
+            <div className="flex items-center space-x-2">
+              {logoUrl && (
+                <img
+                  src={logoUrl}
+                  alt={`${symbol} logo`}
+                  className="w-6 h-6 rounded-full"
+                />
+              )}
+              <h3 className="text-lg font-semibold">{symbol.toUpperCase()}</h3>
+            </div>
+            {!loading && stockData && stockData.closePrices.length > 0 && (
+              <p className="text-md text-gray-300">
+                ${stockData.closePrices[stockData.closePrices.length - 1].toFixed(2)}
+              </p>
+            )}
           </div>
 
           <h2 className="text-xl font-semibold text-white mb-4">Market Overview</h2>
-          <div className="h-80 flex items-center justify-center text-gray-400">
+          <div className="mt-15 h-80 flex items-center justify-center text-gray-400">
             {loading ? (
               "Loading stock data..."
             ) : chartData ? (

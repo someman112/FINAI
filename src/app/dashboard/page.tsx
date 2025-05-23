@@ -6,6 +6,7 @@ import { ThemeSwitcher } from "@/components/ui/themeswitch";
 import { Logo } from "@/components/ui/logo";
 import { GlowingEffect } from "@/components/ui/glowing-effect";
 import MarketOverview from "./MarketOverview";
+import RelatedNewsCard from "./RelatedNewsCard";
 
 export default function Dashboard() {
   return (
@@ -41,21 +42,14 @@ export default function Dashboard() {
         {/* Dashboard Grid */}
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
           {/* Market Overview Card */}
-          <div className="md:col-span-2 lg:col-span-2 "> {/* Make the Market Overview card span 2 columns */}
+          <div className="md:col-span-2 lg:col-span-2 ">
             <MarketOverview />
           </div>
 
           {/* Portfolio Performance */}
           <div className="relative rounded-xl">
-            <div className="relative rounded-xl border border-gray-800/50 p-2">
               <GlowingEffect spread={40} glow={true} disabled={false} proximity={64} inactiveZone={0.01} />
-              <div className="relative bg-black/40 backdrop-blur-sm rounded-lg p-5 z-10">
-                <h2 className="text-xl font-semibold text-white mb-4">Market Sentiment Index</h2>
-                <div className="h-64 flex items-center justify-center text-gray-400">
-                  Portfolio data visualization placeholder
-                </div>
-              </div>
-            </div>
+                <RelatedNewsCard symbol="AAPL"/>
           </div>
 
           {/* News & Alerts */}

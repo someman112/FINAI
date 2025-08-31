@@ -17,10 +17,10 @@ export function AnimatedNavbar({ className }: { className?: string }) {
 
   return (
     <nav
-      className={cn(
-        "w-full max-w-md mx-auto flex justify-center items-center bg-black/80 dark:bg-neutral-900/80 shadow-lg py-2 rounded-3xl",
-        className
-      )}
+    className={cn(
+      "w-full max-w-md mx-auto flex justify-center items-center bg-gradient-to-r from-transparent via-blue-900/30 to-transparent shadow-lg py-2 rounded-none",
+      className
+    )}
     >
       <ul className="relative flex gap-5">
         {tabs.map((tab, idx) => {
@@ -32,7 +32,7 @@ export function AnimatedNavbar({ className }: { className?: string }) {
               {isHovered && (
                 <motion.div
                   layoutId="bubble"
-                  className="absolute inset-0 z-0 rounded-full bg-gray-200/30 dark:bg-gray-300/20"
+                  className="absolute inset-0 z-0 rounded-none bg-gray-900/30 dark:bg-blue-900/20"
                   initial={{ scale: 0.8, opacity: 0 }}
                   animate={{ scale: 1, opacity: 1 }}
                   exit={{ scale: 0.8, opacity: 0 }}
@@ -54,7 +54,7 @@ export function AnimatedNavbar({ className }: { className?: string }) {
                 {isActive && (
                   <motion.div
                     layoutId="navbar-underline"
-                    className="absolute left-0 right-0 -bottom-1 h-1 rounded bg-gray-200 dark:bg-gray-300" // Changed from blue to light gray
+                    className="absolute left-0 right-0 -bottom-1 h-1 rounded bg-gray-200 dark:bg-blue-950" // Changed from blue to light gray
                     transition={{ type: "spring", stiffness: 400, damping: 30 }}
                   />
                 )}
